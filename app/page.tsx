@@ -9,21 +9,40 @@ const Container = styled.div`
   flex-direction: column;
   align-items: center;
   padding: 20px;
+  max-width: 600px; /* 全体の最大幅を設定 */
+  margin: 0 auto; /* 中央揃え */
+  background-color: #f7f7f7; /* 背景色を設定 */
+  border-radius: 10px; /* 角丸を設定 */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* 影を追加 */
 `;
 
-// 各時間ブロックのスタイルを定義
-const HourBlock = styled.div`
-  width: 300px;
-  border: 1px solid #ccc;
-  margin-bottom: 10px;
-  padding: 10px;
-`;
-
-// タスク入力フィールドのスタイルを定義
-const Input = styled.input`
+const Row = styled.div`
+  display: flex;
   width: 100%;
-  padding: 5px;
-  margin-top: 5px;
+  justify-content: flex-start;
+  margin-bottom: 10px;
+`;
+
+const TimeLabel = styled.span`
+  width: 60px;
+  text-align: right;
+  margin-right: 10px;
+  font-family: 'Arial', sans-serif; /* フォントを設定 */
+  color: #333; /* 文字色を設定 */
+`;
+
+const Input = styled.input`
+  flex: 1;
+  padding: 8px; /* 入力欄の余白を調整 */
+  width: 100%;
+  max-width: 400px;
+  border: none; /* ボーダーを削除 */
+  border-radius: 5px; /* 角丸を設定 */
+  background-color: #fff; /* 背景色を設定 */
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); /* 影を追加 */
+  transition: box-shadow 0.3s ease; /* 影の変化をスムーズにする */
+  font-family: 'Arial', sans-serif;
+  color: #555;
 `;
 
 // 0:00から23:00までの24時間の配列を生成
@@ -50,7 +69,7 @@ const Schedule = () => {
   }, [tasks]); // tasksが依存配列に含まれているため、tasksが変更されるたびに実行
 
   // タスクが変更されたときに呼ばれる関数
-  const handleTaskChange = (index: number, value: string) => {
+  const handleChange = (index: number, value: string) => {
     // 新しいtasks配列を作成して、変更されたタスクを更新
     const newTasks = [...tasks];
     newTasks[index] = value;
@@ -60,21 +79,18 @@ const Schedule = () => {
 
   return (
     <Container>
-      {/* 各時間ごとにHourBlockを生成 */}
-      {hours.map((hour, index) => (
-        <HourBlock key={index}>
-          <div>{hour}</div>
-          {/* タスク入力フィールド */}
-          <Input
-            type="text"
-            value={tasks[index]}
-            // タスクが変更されたときにhandleTaskChangeを呼ぶ
-            onChange={(e) => handleTaskChange(index, e.target.value)}
-          />
-        </HourBlock>
-      ))}
-    </Container>
-  );
+    {hours.map((hour, index) => (
+      <Row key={index}>
+        <TimeLabel>{hour}</TimeLabel>
+        <Input
+          type="text"
+          value={tasks[index]}
+          onChange={(e) => handleChange(index, e.target.value)}
+        />
+      </Row>
+    ))}
+  </Container>
+);
 };
 
 export default Schedule;
