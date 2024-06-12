@@ -1,9 +1,9 @@
-"use client"; // このファイルがクライアントサイドでのみレンダリングされることを明示します。
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 
-// コンテナのスタイルを定義します。ページの中央に配置し、背景色やボックスシャドウなどを設定しています。
+// スタイル定義
 const Container = styled.div`
   display: flex;
   padding: 20px;
@@ -12,9 +12,9 @@ const Container = styled.div`
   background-color: #f7f7f7;
   border-radius: 10px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  position: relative;
 `;
 
-// 列のスタイルを定義します。各列はフレックスボックスの一部として表示されます。
 const Column = styled.div`
   flex: 1;
   padding: 10px;
@@ -22,9 +22,9 @@ const Column = styled.div`
   background-color: #fff;
   border-radius: 10px;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  position: relative;
 `;
 
-// 行のスタイルを定義します。時間スロットをフレックスボックスで横並びにします。
 const Row = styled.div`
   display: flex;
   justify-content: flex-start;
@@ -33,7 +33,6 @@ const Row = styled.div`
   position: relative;
 `;
 
-// 時間ラベルのスタイルを定義します。時間表示を右揃えにし、余白を設定しています。
 const TimeLabel = styled.span`
   width: 60px;
   text-align: right;
@@ -42,7 +41,6 @@ const TimeLabel = styled.span`
   color: #333;
 `;
 
-// 入力フィールドのスタイルを定義します。背景色やボックスシャドウ、フォーカス時のスタイルを設定しています。
 const Input = styled.input`
   flex: 1;
   padding: 8px;
@@ -62,7 +60,6 @@ const Input = styled.input`
   }
 `;
 
-// TODOアイテムのスタイルを定義します。背景色やボックスシャドウ、ホバー時のスタイルを設定しています。
 const TodoItem = styled.div`
   display: flex;
   align-items: center;
@@ -77,7 +74,6 @@ const TodoItem = styled.div`
   cursor: pointer;
 `;
 
-// タスク削除ボタンのスタイルを定義します。
 const DeleteButton = styled.button`
   background-color: #e74c3c;
   color: white;
@@ -91,36 +87,37 @@ const DeleteButton = styled.button`
   }
 `;
 
-// 線のスタイルを定義します。TODOアイテムと時間スロットを線で結ぶために使用します。
-const Line = styled.div`
+const SvgContainer = styled.svg`
   position: absolute;
-  height: 2px;
-  background-color: #333;
-  z-index: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 `;
 
-// タスクのインターフェースを定義します。時間とタスクの文字列を持ちます。
+// タスクのインターフェースを定義します
 interface Task {
   time: string;
   task: string;
 }
 
-// Appコンポーネントを定義します。
+// Appコンポーネントを定義します
 const App: React.FC = () => {
-  // 30分ごとの時間スロットを生成します。
+  // 30分ごとの時間スロットを生成します
   const hours: string[] = Array.from({ length: 48 }, (_, i) => {
     const hour = Math.floor(i / 2);
     const minutes = i % 2 === 0 ? '00' : '30';
     return `${hour}:${minutes}`;
   });
 
-  // タスク、TODOアイテム、選択されたタスク、タスクの割り当てを管理するための状態を定義します。
+  // 状態を定義します
   const [tasks, setTasks] = useState<Task[]>([]);
   const [todoItems, setTodoItems] = useState<string[]>(['Task 1', 'Task 2', 'Task 3', 'Task 4']);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [taskAssignments, setTaskAssignments] = useState<string[][]>(Array(48).fill([]).map(() => []));
 
-  // コンポーネントが初めてレンダリングされたときに、ローカルストレージからデータを取得します。
+  // コンポーネントが初めてレンダリングされたときに、ローカルストレージからデータを取得します
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedTasks = localStorage.getItem('tasks');
@@ -139,7 +136,7 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // タスク、TODOアイテム、タスクの割り当てが更新されるたびに、ローカルストレージにデータを保存します。
+  // 状態が更新されるたびに、ローカルストレージにデータを保存します
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('tasks', JSON.stringify(tasks));
@@ -148,12 +145,12 @@ const App: React.FC = () => {
     }
   }, [tasks, todoItems, taskAssignments]);
 
-  // TODOアイテムがクリックされたときに、選択されたタスクを設定します。
+  // TODOアイテムがクリックされたときのハンドラ
   const handleTodoClick = (task: string) => {
     setSelectedTask(task);
   };
 
-  // 時間スロットがクリックされたときに、選択されたタスクをそのスロットに割り当てます。
+  // 時間スロットがクリックされたときのハンドラ
   const handleTimeSlotClick = (index: number) => {
     if (selectedTask !== null) {
       const newTaskAssignments = [...taskAssignments];
@@ -163,48 +160,106 @@ const App: React.FC = () => {
     }
   };
 
-  // TODOアイテムのテキストが変更されたときに、その値を更新します。
+  // 時間スロットのタスクを削除するハンドラ
+  const handleDeleteTask = (timeIndex: number, taskIndex: number) => {
+    const newTaskAssignments = [...taskAssignments];
+    newTaskAssignments[timeIndex] = newTaskAssignments[timeIndex].filter((_, i) => i !== taskIndex);
+    setTaskAssignments(newTaskAssignments);
+  };
+
+  // TODOアイテムのテキストが変更されたときのハンドラ
   const handleTodoChange = (index: number, value: string) => {
     const newTodoItems = [...todoItems];
     newTodoItems[index] = value;
     setTodoItems(newTodoItems);
   };
 
-  // 新しいTODOアイテムを追加します。
+  // 新しいTODOアイテムを追加するハンドラ
   const handleAddTodo = () => {
     setTodoItems([...todoItems, '']);
   };
 
-  // TODOアイテムを削除します。
+  // TODOアイテムを削除するハンドラ
   const handleDeleteTodo = (index: number) => {
     const newTodoItems = [...todoItems];
     newTodoItems.splice(index, 1);
     setTodoItems(newTodoItems);
 
-    // 割り当てられたタスクも削除します。
+    // 割り当てられたタスクも削除します
     const newTaskAssignments = taskAssignments.map(slot =>
       slot.filter(task => task !== todoItems[index])
     );
     setTaskAssignments(newTaskAssignments);
   };
 
-  // タスクの位置を計算します。これはTODOアイテムと時間スロットを線で結ぶために使用されます。
-  const getTaskPosition = (task: string): number | null => {
-    const index = todoItems.indexOf(task);
-    return index !== -1 ? index * 50 + 40 : null;
+  // SVGのrefを定義
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // 線を描画する関数
+  const drawLines = () => {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    // 古い線を削除
+    while (svg.firstChild) {
+      svg.removeChild(svg.firstChild);
+    }
+
+    // 新しい線を描画
+    taskAssignments.forEach((tasks, timeIndex) => {
+      const timeElement = document.getElementById(`time-${timeIndex}`);
+      if (timeElement) {
+        const timeRect = timeElement.getBoundingClientRect();
+        const timeX = timeRect.left + window.scrollX;
+        const timeY = timeRect.top + timeRect.height / 2 + window.scrollY;
+
+        tasks.forEach(task => {
+          const taskIndex = todoItems.indexOf(task);
+          if (taskIndex !== -1) {
+            const taskElement = document.getElementById(`task-${taskIndex}`);
+            if (taskElement) {
+              const taskRect = taskElement.getBoundingClientRect();
+              const taskX = taskRect.right + window.scrollX;
+              const taskY = taskRect.top + taskRect.height / 2 + window.scrollY;
+
+              // ビューポート座標をSVG座標に変換
+              const svgRect = svg.getBoundingClientRect();
+              const adjustedTaskX = taskX - svgRect.left;
+              const adjustedTaskY = taskY - svgRect.top;
+              const adjustedTimeX = timeX - svgRect.left;
+              const adjustedTimeY = timeY - svgRect.top;
+
+              // 線を描画
+              const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+              line.setAttribute('x1', adjustedTaskX.toString());
+              line.setAttribute('y1', adjustedTaskY.toString());
+              line.setAttribute('x2', adjustedTimeX.toString());
+              line.setAttribute('y2', adjustedTimeY.toString());
+              line.setAttribute('stroke', 'black');
+              line.setAttribute('stroke-width', '2');
+              svg.appendChild(line);
+            }
+          }
+        });
+      }
+    });
   };
+
+  // タスクの割り当てが変更されたときに線を描画
+  useEffect(() => {
+    drawLines();
+  }, [taskAssignments, todoItems]);
 
   return (
     <Container>
       <Column>
         <h2>TODO List</h2>
         {todoItems.map((item, index) => (
-          <TodoItem key={index}>
+          <TodoItem key={index} id={`task-${index}`} onClick={() => handleTodoClick(item)}>
             <Input
               type="text"
               value={item}
               onChange={(e) => handleTodoChange(index, e.target.value)}
-              onClick={() => handleTodoClick(item)}
             />
             <DeleteButton onClick={() => handleDeleteTodo(index)}>Delete</DeleteButton>
           </TodoItem>
@@ -214,14 +269,19 @@ const App: React.FC = () => {
       <Column>
         <h2>Schedule</h2>
         {hours.map((hour, index) => (
-          <Row key={index} onClick={() => handleTimeSlotClick(index)}>
+          <Row key={index} id={`time-${index}`} onClick={() => handleTimeSlotClick(index)}>
             <TimeLabel>{hour}</TimeLabel>
-            <Input type="text" value={taskAssignments[index].join(', ')} readOnly />
-            {taskAssignments[index].map(task => (
-              <Line key={task} style={{ top: getTaskPosition(task), left: 60 }} />
-            ))}
+            <div>
+              {taskAssignments[index].map((task, taskIndex) => (
+                <div key={taskIndex} style={{ display: 'flex', alignItems: 'center' }}>
+                  <Input type="text" value={task} readOnly />
+                  <DeleteButton onClick={() => handleDeleteTask(index, taskIndex)}>x</DeleteButton>
+                </div>
+              ))}
+            </div>
           </Row>
         ))}
+        <SvgContainer ref={svgRef} />
       </Column>
     </Container>
   );
