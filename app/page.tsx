@@ -1,9 +1,9 @@
-"use client"; // このファイルがクライアントサイドでのみレンダリングされることを明示します。
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
+import React, { useState, useEffect, useRef } from "react";
+import styled from "styled-components";
 
-// コンテナのスタイルを定義します。ページの中央に配置し、背景色やボックスシャドウなどを設定しています。
+// コンテナのスタイル定義
 const Container = styled.div`
   display: flex;
   padding: 20px;
@@ -12,19 +12,41 @@ const Container = styled.div`
   background-color: #f7f7f7;
   border-radius: 10px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  position: relative;
 `;
 
-// 列のスタイルを定義します。各列はフレックスボックスの一部として表示されます。
+// 各カラムのスタイル定義
 const Column = styled.div`
   flex: 1;
   padding: 10px;
-  margin: 10px;
+  margin: 10px 20px;
   background-color: #fff;
   border-radius: 10px;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  position: relative;
 `;
 
-// 行のスタイルを定義します。時間スロットをフレックスボックスで横並びにします。
+// TODOリストのカラムスタイル定義
+const TodoColumn = styled(Column)`
+  position: sticky;
+  top: 20px;
+  height: calc(100vh - 40px);
+  overflow-y: auto;
+`;
+
+// タイムスロットのラッパーのスタイル定義
+const TimeSlotWrapper = styled.div`
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 10px;
+  margin-bottom: 10px;
+  position: relative;
+  background-color: #f9f9f9;
+  display: flex;
+  flex-direction: column;
+`;
+
+// 各行のスタイル定義
 const Row = styled.div`
   display: flex;
   justify-content: flex-start;
@@ -33,36 +55,42 @@ const Row = styled.div`
   position: relative;
 `;
 
-// 時間ラベルのスタイルを定義します。時間表示を右揃えにし、余白を設定しています。
+// 時間ラベルのスタイル定義
 const TimeLabel = styled.span`
   width: 60px;
-  text-align: right;
-  margin-right: 10px;
-  font-family: 'Arial', sans-serif;
+  // text-align: right;
+  // margin-right: 10px;
+  font-family: "Arial", sans-serif;
   color: #333;
 `;
 
-// 入力フィールドのスタイルを定義します。背景色やボックスシャドウ、フォーカス時のスタイルを設定しています。
+// 入力フィールドのスタイル定義
 const Input = styled.input`
   flex: 1;
   padding: 8px;
   width: 100%;
   max-width: 400px;
+  margin-right: 10px;
   border: none;
   border-radius: 5px;
   background-color: #fff;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
   transition: box-shadow 0.3s ease;
-  font-family: 'Arial', sans-serif;
+  font-family: "Arial", sans-serif;
   color: #555;
 
   &:focus {
     outline: none;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
   }
+
+  &[data-completed="true"] {
+    text-decoration: line-through;
+    color: #999;
+  }
 `;
 
-// TODOアイテムのスタイルを定義します。背景色やボックスシャドウ、ホバー時のスタイルを設定しています。
+// TODOアイテムのスタイル定義
 const TodoItem = styled.div`
   display: flex;
   align-items: center;
@@ -72,17 +100,17 @@ const TodoItem = styled.div`
   background-color: #f0f0f0;
   border-radius: 5px;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-  font-family: 'Arial', sans-serif;
+  font-family: "Arial", sans-serif;
   color: #333;
   cursor: pointer;
 `;
 
-// タスク削除ボタンのスタイルを定義します。
+// 削除ボタンのスタイル定義
 const DeleteButton = styled.button`
-  background-color: #e74c3c;
+  background-color: #ff6347;
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 10px;
   padding: 5px 10px;
   cursor: pointer;
 
@@ -91,41 +119,68 @@ const DeleteButton = styled.button`
   }
 `;
 
-// 線のスタイルを定義します。TODOアイテムと時間スロットを線で結ぶために使用します。
-const Line = styled.div`
-  position: absolute;
-  height: 2px;
-  background-color: #333;
-  z-index: 0;
+// 完了状態切替ボタンのスタイル定義
+const ToggleCompletionButton = styled.button`
+  background-color: #66cdaa;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 5px 10px;
+  cursor: pointer;
+  margin-right: 10px;
+
+  &:hover {
+    background-color: #27ae60;
+  }
 `;
 
-// タスクのインターフェースを定義します。時間とタスクの文字列を持ちます。
+// SVGを固定するためのスタイル定義
+const SvgContainer = styled.svg`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+`;
+
+// タスクのインターフェースを定義
 interface Task {
-  time: string;
-  task: string;
+  text: string;
+  completed: boolean;
 }
 
-// Appコンポーネントを定義します。
+// Appコンポーネントを定義
 const App: React.FC = () => {
-  // 30分ごとの時間スロットを生成します。
+  // 30分ごとの時間スロットを生成
   const hours: string[] = Array.from({ length: 48 }, (_, i) => {
     const hour = Math.floor(i / 2);
-    const minutes = i % 2 === 0 ? '00' : '30';
+    const minutes = i % 2 === 0 ? "00" : "30";
     return `${hour}:${minutes}`;
   });
 
-  // タスク、TODOアイテム、選択されたタスク、タスクの割り当てを管理するための状態を定義します。
+  // 状態を定義
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [todoItems, setTodoItems] = useState<string[]>(['Task 1', 'Task 2', 'Task 3', 'Task 4']);
+  const [todoItems, setTodoItems] = useState<Task[]>([
+    { text: "Task 1", completed: false },
+    { text: "Task 2", completed: false },
+    { text: "Task 3", completed: false },
+    { text: "Task 4", completed: false },
+  ]);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
-  const [taskAssignments, setTaskAssignments] = useState<string[][]>(Array(48).fill([]).map(() => []));
+  const [taskAssignments, setTaskAssignments] = useState<string[][]>(
+    Array(48)
+      .fill([])
+      .map(() => [])
+  );
 
-  // コンポーネントが初めてレンダリングされたときに、ローカルストレージからデータを取得します。
+  // コンポーネントが初めてレンダリングされたときにローカルストレージからデータを取得
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedTasks = localStorage.getItem('tasks');
-      const savedTodoItems = localStorage.getItem('todoItems');
-      const savedTaskAssignments = localStorage.getItem('taskAssignments');
+    if (typeof window !== "undefined") {
+      const savedTasks = localStorage.getItem("tasks");
+      const savedTodoItems = localStorage.getItem("todoItems");
+      const savedTaskAssignments = localStorage.getItem("taskAssignments");
 
       if (savedTasks) {
         setTasks(JSON.parse(savedTasks));
@@ -139,88 +194,202 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // タスク、TODOアイテム、タスクの割り当てが更新されるたびに、ローカルストレージにデータを保存します。
+  // 状態が更新されるたびにローカルストレージにデータを保存
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('tasks', JSON.stringify(tasks));
-      localStorage.setItem('todoItems', JSON.stringify(todoItems));
-      localStorage.setItem('taskAssignments', JSON.stringify(taskAssignments));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+      localStorage.setItem("todoItems", JSON.stringify(todoItems));
+      localStorage.setItem("taskAssignments", JSON.stringify(taskAssignments));
     }
   }, [tasks, todoItems, taskAssignments]);
 
-  // TODOアイテムがクリックされたときに、選択されたタスクを設定します。
+  // TODOアイテムがクリックされたときのハンドラ
   const handleTodoClick = (task: string) => {
     setSelectedTask(task);
   };
 
-  // 時間スロットがクリックされたときに、選択されたタスクをそのスロットに割り当てます。
+  // 時間スロットがクリックされたときのハンドラ
   const handleTimeSlotClick = (index: number) => {
     if (selectedTask !== null) {
       const newTaskAssignments = [...taskAssignments];
-      newTaskAssignments[index] = [...newTaskAssignments[index], selectedTask];
+      newTaskAssignments[index] = [
+        ...newTaskAssignments[index],
+        selectedTask,
+      ];
       setTaskAssignments(newTaskAssignments);
       setSelectedTask(null);
     }
   };
 
-  // TODOアイテムのテキストが変更されたときに、その値を更新します。
-  const handleTodoChange = (index: number, value: string) => {
-    const newTodoItems = [...todoItems];
-    newTodoItems[index] = value;
-    setTodoItems(newTodoItems);
-  };
-
-  // 新しいTODOアイテムを追加します。
-  const handleAddTodo = () => {
-    setTodoItems([...todoItems, '']);
-  };
-
-  // TODOアイテムを削除します。
-  const handleDeleteTodo = (index: number) => {
-    const newTodoItems = [...todoItems];
-    newTodoItems.splice(index, 1);
-    setTodoItems(newTodoItems);
-
-    // 割り当てられたタスクも削除します。
-    const newTaskAssignments = taskAssignments.map(slot =>
-      slot.filter(task => task !== todoItems[index])
+  // 時間スロットのタスクを削除するハンドラ
+  const handleDeleteTask = (timeIndex: number, taskIndex: number) => {
+    const newTaskAssignments = [...taskAssignments];
+    newTaskAssignments[timeIndex] = newTaskAssignments[timeIndex].filter(
+      (_, i) => i !== taskIndex
     );
     setTaskAssignments(newTaskAssignments);
   };
 
-  // タスクの位置を計算します。これはTODOアイテムと時間スロットを線で結ぶために使用されます。
-  const getTaskPosition = (task: string): number | null => {
-    const index = todoItems.indexOf(task);
-    return index !== -1 ? index * 50 + 40 : null;
+  // TODOアイテムのテキストが変更されたときのハンドラ
+  const handleTodoChange = (index: number, value: string) => {
+    const newTodoItems = [...todoItems];
+    newTodoItems[index].text = value;
+    setTodoItems(newTodoItems);
   };
+
+  // 新しいTODOアイテムを追加するハンドラ
+  const handleAddTodo = () => {
+    setTodoItems([...todoItems, { text: "", completed: false }]);
+  };
+
+  // TODOアイテムを削除するハンドラ
+  const handleDeleteTodo = (index: number) => {
+    const deletedTask = todoItems[index].text;
+    const newTodoItems = [...todoItems];
+    newTodoItems.splice(index, 1);
+    setTodoItems(newTodoItems);
+
+    // 割り当てられたタスクも削除
+    const newTaskAssignments = taskAssignments.map((slot) =>
+      slot.filter((task) => task !== deletedTask)
+    );
+    setTaskAssignments(newTaskAssignments);
+  };
+
+  // TODOアイテムの完成状態を切り替えるハンドラ
+  const handleToggleCompletion = (index: number) => {
+    const newTodoItems = [...todoItems];
+    newTodoItems[index].completed = !newTodoItems[index].completed;
+    setTodoItems(newTodoItems);
+  };
+
+  // 線を描画する関数
+  const drawLines = () => {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    // 古い線を削除
+    while (svg.firstChild) {
+      svg.removeChild(svg.firstChild);
+    }
+
+    // スクロール位置を考慮
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+
+    // 新しい線を描画
+    taskAssignments.forEach((tasks, timeIndex) => {
+      tasks.forEach((task, taskAssignmentIndex) => {
+        // 各タスクスロットと対応するTODOアイテムのDOM要素を取得
+        const timeElement = document.getElementById(
+          `task-slot-${timeIndex}-${taskAssignmentIndex}`
+        );
+        const taskIndex = todoItems.findIndex((todo) => todo.text === task);
+        const taskElement = document.getElementById(`task-${taskIndex}`);
+
+        if (timeElement && taskElement) {
+          const timeRect = timeElement.getBoundingClientRect();
+          const taskRect = taskElement.getBoundingClientRect();
+
+          // スケジューラのタスクの左端の中心を取得
+          const timeX = timeRect.left + scrollX;
+          const timeY = timeRect.top + timeRect.height / 2;
+
+          // TODOアイテムの右端の中心を取得
+          const taskX = taskRect.right + scrollX;
+          const taskY = taskRect.top + taskRect.height / 2;
+
+          // SVG要素の相対座標に変換
+          const svgRect = svg.getBoundingClientRect();
+          const adjustedTaskX = taskX - svgRect.left;
+          const adjustedTaskY = taskY - svgRect.top;
+          const adjustedTimeX = timeX - svgRect.left;
+          const adjustedTimeY = timeY - svgRect.top;
+
+          // SVGのline要素を作成
+          const line = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "line"
+          );
+          line.setAttribute("x1", adjustedTaskX.toString());
+          line.setAttribute("y1", adjustedTaskY.toString());
+          line.setAttribute("x2", adjustedTimeX.toString());
+          line.setAttribute("y2", adjustedTimeY.toString());
+          line.setAttribute("stroke", "#3498db");
+          line.setAttribute("stroke-width", "1");
+          svg.appendChild(line);
+        }
+      });
+    });
+  };
+
+  // SVGのrefを定義
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // タスクの割り当てが変更されたときやスクロールされたときに線を描画
+  useEffect(() => {
+    drawLines();
+    // スクロールやリサイズイベントで再描画する設定
+    const handleScrollAndResize = () => {
+      drawLines();
+    };
+
+    window.addEventListener("scroll", handleScrollAndResize);
+    window.addEventListener("resize", handleScrollAndResize);
+
+    return () => {
+      window.removeEventListener("scroll", handleScrollAndResize);
+      window.removeEventListener("resize", handleScrollAndResize);
+    };
+  }, [taskAssignments, todoItems]);
 
   return (
     <Container>
-      <Column>
+      <SvgContainer ref={svgRef} />
+      <TodoColumn>
         <h2>TODO List</h2>
         {todoItems.map((item, index) => (
-          <TodoItem key={index}>
+          <TodoItem
+            key={index}
+            id={`task-${index}`}
+            onClick={() => handleTodoClick(item.text)}
+          >
             <Input
               type="text"
-              value={item}
+              value={item.text}
               onChange={(e) => handleTodoChange(index, e.target.value)}
-              onClick={() => handleTodoClick(item)}
+              data-completed={item.completed.toString()}
             />
+            <ToggleCompletionButton onClick={() => handleToggleCompletion(index)}>
+              {item.completed ? "Undo" : "Complete"}
+            </ToggleCompletionButton>
             <DeleteButton onClick={() => handleDeleteTodo(index)}>Delete</DeleteButton>
           </TodoItem>
         ))}
         <button onClick={handleAddTodo}>Add Task</button>
-      </Column>
+      </TodoColumn>
       <Column>
         <h2>Schedule</h2>
         {hours.map((hour, index) => (
-          <Row key={index} onClick={() => handleTimeSlotClick(index)}>
-            <TimeLabel>{hour}</TimeLabel>
-            <Input type="text" value={taskAssignments[index].join(', ')} readOnly />
-            {taskAssignments[index].map(task => (
-              <Line key={task} style={{ top: getTaskPosition(task), left: 60 }} />
-            ))}
-          </Row>
+          <TimeSlotWrapper key={index}>
+            <Row onClick={() => handleTimeSlotClick(index)}>
+              <TimeLabel>{hour}</TimeLabel>
+            </Row>
+            <div>
+              {taskAssignments[index].map((task, taskIndex) => (
+                <div
+                  key={taskIndex}
+                  id={`task-slot-${index}-${taskIndex}`}
+                  style={{ display: "flex", alignItems: "center" }}
+                >
+                  <Input type="text" value={task} readOnly />
+                  <DeleteButton onClick={() => handleDeleteTask(index, taskIndex)}>
+                    x
+                  </DeleteButton>
+                </div>
+              ))}
+            </div>
+          </TimeSlotWrapper>
         ))}
       </Column>
     </Container>
