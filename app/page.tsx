@@ -360,7 +360,7 @@ const App: React.FC = () => {
     <Container>
       <SvgContainer ref={svgRef} />
       <TodoColumn>
-        <h2>Today's ToDo</h2>
+        <h2>Today&apos;s ToDo</h2>
         {todoItems.map((item, index) => (
           <TodoItem
             key={index}
