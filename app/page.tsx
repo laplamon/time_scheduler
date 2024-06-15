@@ -168,11 +168,7 @@ interface Task {
 // Appコンポーネントを定義
 const App: React.FC = () => {
   // 30分ごとの時間スロットを生成
-  const hours: string[] = Array.from({ length: 48 }, (_, i) => {
-    const hour = Math.floor(i / 2);
-    const minutes = i % 2 === 0 ? "00" : "30";
-    return `${hour}:${minutes}`;
-  });
+  const hours: string[] = Array.from({ length: 24 }, (_, i) => `${i}:00`);
 
   // 状態を定義
   const [tasks, setTasks] = useState<Task[]>([]);
