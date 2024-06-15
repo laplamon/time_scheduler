@@ -28,6 +28,9 @@ const Column = styled.div`
 
 // TODOリストのカラムスタイル定義
 const TodoColumn = styled(Column)`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   position: sticky;
   top: 20px;
   height: calc(100vh - 40px);
@@ -58,8 +61,6 @@ const Row = styled.div`
 // 時間ラベルのスタイル定義
 const TimeLabel = styled.span`
   width: 60px;
-  // text-align: right;
-  // margin-right: 10px;
   font-family: "Arial", sans-serif;
   color: #333;
 `;
@@ -173,10 +174,10 @@ const App: React.FC = () => {
   // 状態を定義
   const [tasks, setTasks] = useState<Task[]>([]);
   const [todoItems, setTodoItems] = useState<Task[]>([
-    { text: "Task 1", completed: false },
-    { text: "Task 2", completed: false },
-    { text: "Task 3", completed: false },
-    { text: "Task 4", completed: false },
+    { text: "Task", completed: false },
+    { text: "", completed: false },
+    { text: "", completed: false },
+    { text: "", completed: false },
   ]);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [taskAssignments, setTaskAssignments] = useState<string[][]>(
