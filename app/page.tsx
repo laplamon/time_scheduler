@@ -134,6 +134,20 @@ const ToggleCompletionButton = styled.button`
   }
 `;
 
+// タスク追加ボタンのスタイル定義
+const AddTaskButton = styled.button`
+  background-color: #87cefa;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 5px 10px;
+  cursor: pointer;
+  margin-right: 10px;
+  &:hover {
+    background-color: #3498db;
+  }
+`;
+
 // SVGを固定するためのスタイル定義
 const SvgContainer = styled.svg`
   position: fixed;
@@ -275,7 +289,6 @@ const App: React.FC = () => {
 
     // スクロール位置を考慮
     const scrollX = window.scrollX;
-    const scrollY = window.scrollY;
 
     // 新しい線を描画
     taskAssignments.forEach((tasks, timeIndex) => {
@@ -315,7 +328,7 @@ const App: React.FC = () => {
           line.setAttribute("y1", adjustedTaskY.toString());
           line.setAttribute("x2", adjustedTimeX.toString());
           line.setAttribute("y2", adjustedTimeY.toString());
-          line.setAttribute("stroke", "#3498db");
+          line.setAttribute("stroke", "#b0c4de");
           line.setAttribute("stroke-width", "1");
           svg.appendChild(line);
         }
@@ -347,7 +360,7 @@ const App: React.FC = () => {
     <Container>
       <SvgContainer ref={svgRef} />
       <TodoColumn>
-        <h2>TODO List</h2>
+        <h2>Today's ToDo</h2>
         {todoItems.map((item, index) => (
           <TodoItem
             key={index}
@@ -366,10 +379,10 @@ const App: React.FC = () => {
             <DeleteButton onClick={() => handleDeleteTodo(index)}>Delete</DeleteButton>
           </TodoItem>
         ))}
-        <button onClick={handleAddTodo}>Add Task</button>
+        <AddTaskButton onClick={handleAddTodo}>Add Task</AddTaskButton>
       </TodoColumn>
       <Column>
-        <h2>Schedule</h2>
+        <h2>Time Schedule</h2>
         {hours.map((hour, index) => (
           <TimeSlotWrapper key={index}>
             <Row onClick={() => handleTimeSlotClick(index)}>
